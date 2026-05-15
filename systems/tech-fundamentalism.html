@@ -12,6 +12,14 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p><a href="../index.html">← 返回首页</a></p>
 
+<div style="font-size:14px; color:#777; margin:0 0 1.5em 0; padding:6px 10px; background:#f9f9f9; border-left:3px solid #ccc; display:inline-block;">
+  <label style="cursor:pointer;">
+    <input type="checkbox" id="polish-toggle" onclick="togglePolish()" style="cursor:pointer;"> 人类润色版本
+  </label>
+</div>
+
+<div id="raw-version">
+
 <h1>技术原教旨主义：当技术本身成为目的</h1>
 
 <h2>一、有一种人，技术很强，但对人世很陌生</h2>
@@ -150,9 +158,26 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p>这些调整不是为了变成一个"不那么纯粹的技术人"，而是为了让技术能力真正服务于它应该服务的东西——人的需求，而不是技术的自我繁殖。</p>
 
+</div>
+
+<div id="polished-version" style="display:none">
+  <p><em>暂无润色版本，由作者修改后将在此显示。</em></p>
+</div>
+
 <hr>
 
 <p><a href="../index.html">← 返回首页</a></p>
+
+<script>
+function togglePolish() {
+  var raw = document.getElementById('raw-version');
+  var polished = document.getElementById('polished-version');
+  var checked = document.getElementById('polish-toggle').checked;
+  raw.style.display = checked ? 'none' : 'block';
+  polished.style.display = checked ? 'block' : 'none';
+  if (typeof MathJax !== 'undefined') MathJax.typesetPromise();
+}
+</script>
 
 </body>
 </html>

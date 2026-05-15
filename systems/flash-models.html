@@ -12,6 +12,14 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p><a href="../index.html">← 返回首页</a></p>
 
+<div style="font-size:14px; color:#777; margin:0 0 1.5em 0; padding:6px 10px; background:#f9f9f9; border-left:3px solid #ccc; display:inline-block;">
+  <label style="cursor:pointer;">
+    <input type="checkbox" id="polish-toggle" onclick="togglePolish()" style="cursor:pointer;"> 人类润色版本
+  </label>
+</div>
+
+<div id="raw-version">
+
 <h1>flash模型：大模型应用的两个维度</h1>
 
 <h2>一、一个已有的现象</h2>
@@ -84,9 +92,26 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p>这不是一个技术预测。这是一个经济必然性：当某种智力资源变得免费时，它就会被用到一切可以用到的地方。</p>
 
+</div>
+
+<div id="polished-version" style="display:none">
+  <p><em>暂无润色版本，由作者修改后将在此显示。</em></p>
+</div>
+
 <hr>
 
 <p><a href="../index.html">← 返回首页</a></p>
+
+<script>
+function togglePolish() {
+  var raw = document.getElementById('raw-version');
+  var polished = document.getElementById('polished-version');
+  var checked = document.getElementById('polish-toggle').checked;
+  raw.style.display = checked ? 'none' : 'block';
+  polished.style.display = checked ? 'block' : 'none';
+  if (typeof MathJax !== 'undefined') MathJax.typesetPromise();
+}
+</script>
 
 </body>
 </html>

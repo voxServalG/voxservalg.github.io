@@ -12,6 +12,14 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p><a href="../index.html">← 返回首页</a></p>
 
+<div style="font-size:14px; color:#777; margin:0 0 1.5em 0; padding:6px 10px; background:#f9f9f9; border-left:3px solid #ccc; display:inline-block;">
+  <label style="cursor:pointer;">
+    <input type="checkbox" id="polish-toggle" onclick="togglePolish()" style="cursor:pointer;"> 人类润色版本
+  </label>
+</div>
+
+<div id="raw-version">
+
 <h1>被抛入世与直面虚无</h1>
 
 <blockquote>
@@ -96,9 +104,26 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p>这四位思想家从不同的方向走到了同一个结论附近：人没有预设的意义，这是事实。社会提供的剧本可以暂时遮盖这个事实，但不能消除它。当剧本失效，虚无扑面而来——这不是终点，而是起点。因为只有在不再依赖外部答案的时候，一个人才真正开始为自己而活。</p>
 
+</div>
+
+<div id="polished-version" style="display:none">
+  <p><em>暂无润色版本，由作者修改后将在此显示。</em></p>
+</div>
+
 <hr>
 
 <p><a href="../index.html">← 返回首页</a></p>
+
+<script>
+function togglePolish() {
+  var raw = document.getElementById('raw-version');
+  var polished = document.getElementById('polished-version');
+  var checked = document.getElementById('polish-toggle').checked;
+  raw.style.display = checked ? 'none' : 'block';
+  polished.style.display = checked ? 'block' : 'none';
+  if (typeof MathJax !== 'undefined') MathJax.typesetPromise();
+}
+</script>
 
 </body>
 </html>

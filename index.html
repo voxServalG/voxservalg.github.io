@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>个人理论知识库</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+
+<h1>个人理论知识库</h1>
+
+<p>这里是我在项目中积累的理论笔记。</p>
+
+<p>这些笔记不介绍代码怎么写。它们记录的是：一个问题为什么是这样，一个方法背后的道理是什么，以及我在不同领域之间发现的联系。</p>
+
+<p>目前覆盖的范围有以下几个：</p>
+
+<h2>一、逆问题与信号处理</h2>
+
+<p>从测量结果反推原因，这类问题统称为逆问题。相位恢复、盲源分离、压缩感知都属于这一类。它们共同的困难在于——已知条件不够，需要额外的假设才能求解。</p>
+
+<p>
+<a href="inverse/phase-retrieval.html">相位恢复</a>
+&nbsp;&middot;&nbsp;
+<a href="inverse/blind-source-separation.html">盲源分离与ICA</a>
+&nbsp;&middot;&nbsp;
+<a href="inverse/overview.html">逆问题总述</a>
+</p>
+
+<h2>二、统计推断</h2>
+
+<p>从有限样本推断总体性质，是数据分析中最基本的理论工具。这里的核心问题不是"怎么算"，而是"算出来的东西意味着什么"——p值到底说了什么，没说什么；模型的假设有多要紧。</p>
+
+<p>
+<a href="statistics/hypothesis-testing.html">假设检验</a>
+&nbsp;&middot;&nbsp;
+<a href="statistics/regression.html">回归分析</a>
+&nbsp;&middot;&nbsp;
+<a href="statistics/bayesian.html">贝叶斯思想</a>
+&nbsp;&middot;&nbsp;
+<a href="statistics/as-politics.html">统计学的本质是政治学</a>
+</p>
+
+<h2>三、时间序列与动力学</h2>
+
+<p>一串按时间排列的数据，里面可能藏着不同时间尺度的变化。怎样把它们分开，怎样从频域的角度重新理解技术指标，怎样描述一个系统的演化规律——这些都是时间序列分析要回答的问题。</p>
+
+<p>
+<a href="dynamics/frequency-domain.html">频域分析</a>
+&nbsp;&middot;&nbsp;
+<a href="dynamics/multi-scale.html">多时间尺度建模</a>
+&nbsp;&middot;&nbsp;
+<a href="dynamics/market-microstructure.html">市场微观结构</a>
+</p>
+
+<h2>四、电磁场与数值模拟</h2>
+
+<p>麦克斯韦方程组告诉我们磁场怎么分布。但实际问题中，解析解很少存在，需要数值方法。这里记录的是：磁偶极子场的计算、线圈屏蔽的物理图像、以及运动伪影的来源。</p>
+
+<p>
+<a href="em/dipole-fields.html">磁偶极子场</a>
+&nbsp;&middot;&nbsp;
+<a href="em/shielding.html">磁场屏蔽与伪影</a>
+</p>
+
+<h2>五、数学基础</h2>
+
+<p>一些不专属于某个应用领域、但在多个项目中反复出现的数学工具。</p>
+
+<p>
+<a href="math/quaternion.html">四元数与旋转</a>
+&nbsp;&middot;&nbsp;
+<a href="math/wirtinger-calculus.html">Wirtinger微积分</a>
+&nbsp;&middot;&nbsp;
+<a href="math/optimization.html">优化方法</a>
+</p>
+
+<h2>六、系统设计</h2>
+
+<p>怎样设计一个可靠的交易执行系统，怎样让自动化和人工干预并存，怎样让状态看得清、控得住。这些不是数学理论，但包含了对系统行为的深入理解。</p>
+
+<p>
+<a href="systems/state-machine-trading.html">状态机与交易执行</a>
+&nbsp;&middot;&nbsp;
+<a href="systems/agent-communication.html">智能体通信</a>
+&nbsp;&middot;&nbsp;
+<a href="systems/tech-fundamentalism.html">技术原教旨主义</a>
+</p>
+
+<h2>七、技术与人文</h2>
+
+<p>技术不是发生在真空中的。技术被人创造，也反过来塑造人。这一部分讨论的是：技术怎样改变社会，人怎样在使用技术的过程中定义自己，以及当旧的意义框架松动之后，人怎样重新找到立足点。</p>
+
+<p>
+<a href="systems/flash-models.html">flash模型：大模型的两个维度</a>
+&nbsp;&middot;&nbsp;
+<a href="systems/existentialism.html">被抛入世与直面虚无</a>
+&nbsp;&middot;&nbsp;
+<a href="systems/existentialism-everyday.html">存在主义：从文学、音乐到工科处境</a>
+</p>
+
+<hr>
+
+<p>这些页面还在不断补充中。每篇笔记都按照一个原则来写：先说明对象是什么，再说明它有什么性质，然后说明这些性质有什么用。</p>
+
+<p>最后更新：2026年5月</p>
+
+</body>
+</html>

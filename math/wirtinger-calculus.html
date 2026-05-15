@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Wirtinger微积分 —— 数学基础</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+
+<p><a href="../index.html">← 返回首页</a></p>
+
+<h1>Wirtinger微积分</h1>
+
+<h2>一、复数函数求导的困难在哪里</h2>
+
+<p>实数函数的导数大家都很熟悉。$f(x) = x^2$，求导得到 $2x$，过程直接。</p>
+
+<p>但复数函数的情况不一样。以 $f(z) = |z|^2 = z \bar{z}$ 为例。这个函数看起来很普通，但它在复数域内不是复可微的。</p>
+
+<p>复可微（complex differentiable）的要求比实可微严格得多。一个复数函数在某点复可微，要求它的极限不论从哪个方向趋近都相同。这导致了一个很强的结论——柯西-黎曼条件。满足这个条件的函数叫做全纯函数（holomorphic）。</p>
+
+<p>很多实际有用的函数——比如 $|z|^2$，或者任何涉及复共轭的函数——都不是全纯的。因此，在实数优化中普遍使用的梯度下降，没法直接搬到复数域来——因为按传统的复数导数定义，这些函数根本没有导数。</p>
+
+<p>Wirtinger微积分的贡献，就是给这些"非全纯"函数也提供了一套可用的求导方法。</p>
+
+<h2>二、把复数拆成实部和虚部</h2>
+
+<p>首要的想法很简单。任何一个复数 $z$ 都可以写成实部加虚部的形式：</p>
+
+$$ z = x + iy $$
+
+<p>这里 $x$ 是实部，$y$ 是虚部，$i$ 是虚数单位。</p>
+
+<p>如果把 $f(z)$ 看成实部和虚部的函数 $f(x, y)$，那么对 $x$ 和 $y$ 分别求偏导数，都是常规的实数微积分。</p>
+
+<p>Wirtinger的做法是：把这实部和虚部的两个偏导数，组合成两个新的偏导数——一个对 $z$ 求导，一个对 $\bar{z}$（$z$ 的共轭）求导。</p>
+
+<h2>三、Wirtinger导数的定义</h2>
+
+<p>$z$ 和 $\bar{z}$ 用 $x$ 和 $y$ 表示为：</p>
+
+$$ z = x + iy, \quad \bar{z} = x - iy $$
+
+<p>反过来：</p>
+
+$$ x = \frac{z + \bar{z}}{2}, \quad y = \frac{z - \bar{z}}{2i} $$
+
+<p>利用链式法则，可以定义对 $z$ 和对 $\bar{z}$ 的偏导数。</p>
+
+<p>对 $z$ 的 Wirtinger 导数定义为：</p>
+
+$$ \frac{\partial f}{\partial z} = \frac{1}{2}\left( \frac{\partial f}{\partial x} - i \frac{\partial f}{\partial y} \right) $$
+
+<p>对 $\bar{z}$ 的 Wirtinger 导数定义为：</p>
+
+$$ \frac{\partial f}{\partial \bar{z}} = \frac{1}{2}\left( \frac{\partial f}{\partial x} + i \frac{\partial f}{\partial y} \right) $$
+
+<p>这两个定义的关键点在于：我们把 $z$ 和 $\bar{z}$ 当作两个"独立"的变量来处理。这种独立性当然不是真的——$z$ 和 $\bar{z}$ 事实上是互相决定的——但在求导运算中，这样处理是合法的，而且非常方便。</p>
+
+<h2>四、基本的运算规则</h2>
+
+<p>Wirtinger导数满足一些很好用的规则。</p>
+
+<p>规则一：</p>
+
+$$ \frac{\partial z}{\partial z} = 1, \quad \frac{\partial \bar{z}}{\partial z} = 0, \quad \frac{\partial z}{\partial \bar{z}} = 0, \quad \frac{\partial \bar{z}}{\partial \bar{z}} = 1 $$
+
+<p>这就是说，在运算中可以把 $z$ 和 $\bar{z}$ 当作互相独立的变量。</p>
+
+<p>规则二：对于一个全纯函数 $f(z)$，有</p>
+
+$$ \frac{\partial f}{\partial \bar{z}} = 0 $$
+
+<p>这和柯西-黎曼条件是等价的。全纯函数不依赖 $\bar{z}$，所以对 $\bar{z}$ 的导数为零。此时 Wirtinger 导数 $\partial f / \partial z$ 就等于通常的复导数。</p>
+
+<p>规则三：对于 $f(z) = |z|^2 = z \bar{z}$，有</p>
+
+$$ \frac{\partial f}{\partial z} = \bar{z}, \quad \frac{\partial f}{\partial \bar{z}} = z $$
+
+<p>这符合我们"把 $z$ 和 $\bar{z}$ 当成独立变量"的直觉。</p>
+
+<h2>五、怎样用来做优化</h2>
+
+<p>在实数优化中，梯度下降的更新公式是：</p>
+
+$$ x_{k+1} = x_k - \mu \cdot \nabla f(x_k) $$
+
+<p>这里 $\nabla f$ 是 $f$ 对 $x$ 的梯度。$\mu$ 是步长。</p>
+
+<p>在复数域，对应的做法是沿 Wirtinger 梯度的负方向更新。具体来说，更新方向取 $\partial f / \partial \bar{z}$：</p>
+
+$$ z_{k+1} = z_k - \mu \cdot \frac{\partial f}{\partial \bar{z}} $$
+
+<p>为什么走 $\partial f / \partial \bar{z}$ 的方向而不是 $\partial f / \partial z$？可以这样理解：$\partial f / \partial \bar{z}$ 指向 $f$ 增加最快的方向（把 $\bar{z}$ 当作变量），所以沿它的负方向，$f$ 减小最快。</p>
+
+<p>用 Wirtinger 微积分，我们可以把实数域中的几乎所有优化算法（梯度下降、共轭梯度、牛顿法……）都搬到复数域。相位恢复中的 Wirtinger Flow 就是最直接的例子——它所做的，就是把损失函数用 Wirtinger 导数求梯度，然后沿这个梯度方向迭代。</p>
+
+<p>关于 Wirtinger Flow 在相位恢复中的详细应用，见 <a href="../inverse/phase-retrieval.html">相位恢复</a>。</p>
+
+<h2>六、小结</h2>
+
+<p>Wirtinger微积分不是一套全新的理论，而是一个巧妙的处理方式。它绕过复可微性的严格限制，把 $z$ 和 $\bar{z}$ 当作独立变量分开求导，从而让任何复数函数都可以用梯度优化的方法来处理。</p>
+
+<p>在信号处理和相位恢复中，这个工具特别有用——因为那些问题中到处是模的平方 $|z|^2$，在传统复分析中它不可导，但在 Wirtinger 框架下可以直接处理。</p>
+
+<hr>
+
+<p><a href="../index.html">← 返回首页</a></p>
+
+</body>
+</html>

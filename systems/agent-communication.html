@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>智能体通信 —— 系统设计</title>
 <script>
 window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
@@ -9,8 +10,9 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 </head>
 <body>
+<noscript><p>请启用 JavaScript 以显示数学公式。</p></noscript>
 
-<p><a href="../index.html">← 返回首页</a></p>
+<p><a href="../index.html">首页</a> &gt; 系统设计 &gt; 智能体通信</p>
 
 <h1>智能体通信</h1>
 
@@ -42,7 +44,7 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <p>但异步通信引入了新的复杂性：消息顺序不确定，回复可能超时或丢失，发送方需要维护一个"我发了什么、在等谁的回复"的内部状态。</p>
 
-<p>这个状态管理的问题，实际上和状态机设计是同一个问题——系统需要知道自己当前在哪个状态，在等什么，等不到怎么办。因此，智能体通信层的设计可以从状态机设计中获得借鉴——每个对话会话、每个任务的执行阶段，都可以视为一个状态，消息事件触发状态转移。</p>
+<p>这个状态管理的问题，实际上和<a href="state-machine-trading.html">状态机设计</a>是同一个问题——系统需要知道自己当前在哪个状态，在等什么，等不到怎么办。因此，智能体通信层的设计可以从状态机设计中获得借鉴——每个对话会话、每个任务的执行阶段，都可以视为一个状态，消息事件触发状态转移。</p>
 
 <h2>四、错误处理和超时</h2>
 
@@ -62,7 +64,7 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <hr>
 
-<p><a href="../index.html">← 返回首页</a></p>
+<p><a href="state-machine-trading.html">← 状态机与交易执行</a> &nbsp;&middot;&nbsp; <a href="../index.html">返回首页</a></p>
 
 </body>
 </html>

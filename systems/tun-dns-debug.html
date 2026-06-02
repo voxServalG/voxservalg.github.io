@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux TUN 卡住的一次排查 —— 技术与人文</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+<noscript><p>请启用 JavaScript 以显示数学公式。</p></noscript>
+
+<p><a href="../index.html">首页</a> &gt; 技术与人文 &gt; Linux TUN 卡住的一次排查</p>
+
+<div style="font-size:14px; color:#777; margin:0 0 1.5em 0; padding:6px 10px; background:#f9f9f9; border-left:3px solid #ccc; display:inline-block;">
+  <label style="cursor:pointer;">
+    <input type="checkbox" id="polish-toggle" onclick="togglePolish()" style="cursor:pointer;"> 人类润色版本
+  </label>
+</div>
+
+<div id="raw-version">
+
+<h1>Linux TUN 卡住的一次排查：问题不在 TUN，而在 DNS 没刷新</h1>
+
+<p>这次我在 Linux 上使用 Clash Verge Rev / Mihomo 的 TUN 模式，遇到了一个很典型的问题：TUN 明明已经启动了，但网络还是会卡住。网页有时能打开，有时一直转圈。直觉上很容易去怀疑节点、MTU、路由、TUN stack 或权限。但最后发现，真正的坑在 DNS。</p>
+
+<h2>一、先看网卡</h2>
+
+<p>出问题的时候，第一件事永远是确认硬件存在。先查 Mihomo 虚拟网卡有没有建起来：</p>
+
+<pre><code>ip link | grep -i mihomo</code></pre>
+
+<p>结果：</p>
+
+<pre><code>Mihomo: &lt;POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP&gt;</code></pre>
+
+<p>网卡在。这说明问题不是"没有 TUN"，而是"有 TUN，但流量没被正确接管"。水管接上了，水没流进去。</p>
+
+<h2>二、再看 DNS</h2>
+
+<p>第二步，查系统 DNS 返回了什么：</p>
+
+<pre><code>dig google.com</code></pre>
+
+<p>返回的是 Google 的真实 IP，比如 <code>142.x.x.x</code>，<code>SERVER: 127.0.0.53</code>。</p>
+
+<p>这一步很关键。如果 Mihomo 的 fake-ip 模式已经生效，解析结果不应该是真实 IP，应该是 <code>198.18.x.x</code>。因为 Mihomo 的 fake-ip 会给每个域名分配一个虚拟地址，再根据这个虚拟地址去接管连接——整个过程不通过真实 DNS。</p>
+
+<p><code>142.x.x.x</code> 说明系统的 DNS 压根没走到 Mihomo。</p>
+
+<p>接着直接问 Mihomo 自己的 DNS：</p>
+
+<pre><code>dig @198.18.0.2 google.com +short</code></pre>
+
+<p>一开始它也返回真实 IP。问题明确了：Mihomo DNS 虽然能访问，但 fake-ip 没生效。</p>
+
+<h2>三、查配置</h2>
+
+<p>打开 Clash Verge Rev 的设置面板，确认以下几项已经打开：</p>
+
+<pre><code>DNS 覆写：开启
+DNS enhanced-mode：fake-ip
+fake-ip-range：198.18.0.1/16
+DNS hijack：any:53</code></pre>
+
+<p>配置看起来全对。但问题还在。</p>
+
+<p>最后发现关键点：改完 Clash Verge Rev 的设置后，只点保存是不够的。Mihomo kernel / core 必须重启。新配置只是写进了文件，正在运行的 core 没有重新读取。</p>
+
+<h2>四、重启核验</h2>
+
+<p>重启 kernel 之后，再查：</p>
+
+<pre><code>dig @198.18.0.2 google.com +short</code></pre>
+
+<p>这次返回：</p>
+
+<pre><code>198.18.0.11</code></pre>
+
+<p>Mihomo 的 fake-ip DNS 终于生效了。</p>
+
+<p>然后得把 Ubuntu 的 systemd-resolved 指向 Mihomo DNS：</p>
+
+<pre><code>sudo resolvectl dns Mihomo 198.18.0.2
+sudo resolvectl domain Mihomo '~.'
+sudo resolvectl default-route Mihomo yes
+sudo resolvectl flush-caches</code></pre>
+
+<p>如果 WiFi 网卡还在抢默认 DNS，再补一条：</p>
+
+<pre><code>sudo resolvectl default-route wlp3s0 no
+sudo resolvectl flush-caches</code></pre>
+
+<p>最后用两个命令验收：</p>
+
+<pre><code>dig @198.18.0.2 google.com +short
+dig google.com +short</code></pre>
+
+<p>理想结果都是：</p>
+
+<pre><code>198.18.x.x</code></pre>
+
+<p>两件事都正常了：Mihomo 自己的 DNS fake-ip 正常，系统 DNS 也真的交给了 Mihomo。</p>
+
+<h2>五、踩坑填坑</h2>
+
+<p>回过头来看，这次踩了四个坑。每一个单独看都不大，但叠在一起就会让你在配置面板和命令行之间反复折腾。</p>
+
+<p><strong>第一个坑：TUN 网卡存在，不等于流量被接管。</strong> <code>ip link</code> 看到 <code>UP,LOWER_UP</code> 只说明网卡活了，不说明路由和 DNS 已经指向它。很多人看到网卡就以为问题在别处，其实网络问题要一层一层验：网卡→DNS→路由，顺序不能跳。</p>
+
+<p><strong>第二个坑：改完配置不重启。</strong> Clash Verge Rev 的 GUI 保存配置，不等于 Mihomo core 重读了配置。这是最隐蔽的一个坑——配置面板看起来全对，dig 结果就是不对。判断标准：改完 fake-ip 相关设置之后，有没有在 Mihomo 里点"重启核心"。</p>
+
+<p><strong>第三个坑：fake-ip 有没有生效，只能靠 dig 验，不能靠配置面板看。</strong> 配置面板打勾只是一个承诺。生效没生效，唯一的证据是 <code>dig @198.18.0.2 google.com +short</code> 返回 <code>198.18.x.x</code>。返回 <code>142.x.x.x</code> 就是没生效，不管面板上勾了几个框。</p>
+
+<p><strong>第四个坑：systemd-resolved 会抢默认 DNS。</strong> Ubuntu 默认用 <code>127.0.0.53</code> 做 DNS stub resolver。你把 Mihomo 的 DNS 设好了，WiFi 网卡可能还在 <code>resolvectl</code> 里占着默认路由。所以最后一步不要只设 Mihomo，还要把 WiFi 网卡的 default-route 关掉。</p>
+
+<p>这四个坑有一个共同点：它们都不是玄学问题。每一个都有明确的判断标准，每一步都可以验证。排 Linux 网络问题，最怕只凭感觉换设置。正确的做法是一步一步验收：先看网卡，再看 Mihomo DNS，再看系统 DNS，最后看路由。这样问题就会从一团雾，变成一根一根能摸清的线。</p>
+
+<p>最终的判断标准其实只有一条：</p>
+<pre><code>返回 142.x.x.x：还在走真实 DNS 解析。
+返回 198.18.x.x：fake-ip 已经生效。</code></pre>
+
+<p>开启 TUN 和 fake-ip，重启 Mihomo kernel，用 resolvectl 把系统 DNS 指向 Mihomo，dig 检查是否返回 198.18.x.x。就这四步。</p>
+
+</div>
+
+<div id="polished-version" style="display:none">
+  <p><em>暂无润色版本，由作者修改后将在此显示。</em></p>
+</div>
+
+<hr>
+
+<p><a href="gpt-chinese.html">← GPT式中文</a> &nbsp;&middot;&nbsp; <a href="../index.html">返回首页</a></p>
+
+<script>
+function togglePolish() {
+  var raw = document.getElementById('raw-version');
+  var polished = document.getElementById('polished-version');
+  var checked = document.getElementById('polish-toggle').checked;
+  raw.style.display = checked ? 'none' : 'block';
+  polished.style.display = checked ? 'block' : 'none';
+  if (typeof MathJax !== 'undefined') MathJax.typesetPromise();
+}
+</script>
+
+</body>
+</html>

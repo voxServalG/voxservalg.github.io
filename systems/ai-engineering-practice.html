@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 辅助的专利文档修正与自动化工具链踩坑 —— 工程实践</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+<noscript><p>请启用 JavaScript 以显示数学公式。</p></noscript>
+
+<p><a href="../index.html">首页</a> &gt; 工程实践 &gt; AI 辅助的专利文档修正</p>
+
+<h1>AI 辅助的专利文档修正与自动化工具链踩坑</h1>
+
+<p>这次的任务是为一份中文发明专利补充参数定义。专利代理想让我逐条回应 27 条审阅批注，每条批注的核心诉求都是同一个："这个参数什么意思，请补充定义"。看似简单的工作，实际做下来涉及了 OOXML 操作、文档知识交叉验证、工作流工具的边界限制、以及文件操作的容错。以下记录全过程中的经验和踩坑。</p>
+
+<h2>一、OOXML Track Changes 的直接操作</h2>
+
+<p>专利审查要求使用 Word 的"审阅-修订模式"（Track Changes），即所有修改必须以 <code>&lt;w:ins&gt;</code> 和 <code>&lt;w:del&gt;</code> 的形式标记，不能做静默替换。</p>
+
+<p><strong>第一个坑</strong>：<code>python-docx</code> 虽然能读写段落、样式和表格，但它<strong>不保留 Track Changes 标记</strong>。如果用它打开一个包含修订痕迹的 docx，然后保存，所有的 <code>&lt;w:ins&gt;</code> / <code>&lt;w:del&gt;</code> 会被识别为普通文本，修订全部丢失。所以必须直接操作 OOXML 的原始 XML。</p>
+
+<p><strong>正确的做法</strong>：用 <code>lxml</code> 解析 <code>word/document.xml</code>，构造 <code>&lt;w:ins&gt;</code> 元素插入到对应段落末尾。每个 <code>&lt;w:ins&gt;</code> 需要包含唯一的 <code>w:id</code>、作者名、时间戳、以及带格式（红色下划线）的 <code>&lt;w:r&gt;</code> 子元素。</p>
+
+<pre><code>&lt;w:ins w:id="3" w:author="haiy1" w:date="2026-06-03T09:00:00Z"&gt;
+  &lt;w:r&gt;
+    &lt;w:rPr&gt;
+      &lt;w:color w:val="FF0000"/&gt;
+      &lt;w:u w:val="single"/&gt;
+    &lt;/w:rPr&gt;
+    &lt;w:t&gt; a_q：第q个双平面单元的两块导体板之间的半间距&lt;/w:t&gt;
+  &lt;/w:r&gt;
+&lt;/w:ins&gt;</code></pre>
+
+<p><strong>第二个坑</strong>：Word 文档中，批注的锚定方式有两种：<code>&lt;commentRangeStart&gt;</code> + <code>&lt;commentRangeEnd&gt;</code> 包裹被评注的文本，或者直接使用 <code>&lt;commentReference&gt;</code>。如果只检查 <code>commentRangeStart</code>，会漏掉只用 <code>commentReference</code> 锚定的批注。实际遇到的情况是 27 条批注中有 3 条只用了 <code>commentReference</code>。</p>
+
+<h2>二、ZipFile 写模式的截断陷阱</h2>
+
+<p>这是整个过程中最大的一次事故。</p>
+
+<p><strong>错误写法</strong>：</p>
+
+<pre><code>with zipfile.ZipFile(docx_path, 'w') as zout:        # w 模式：此刻文件已被截断为空
+    with zipfile.ZipFile(docx_path, 'r') as zin:      # 读取已被截断的文件 → BadZipFile
+        entries = {n: zin.read(n) for n in zin.namelist()}
+    # ...写回...</code></pre>
+
+<p><code>zipfile.ZipFile('w')</code> 在打开文件的一瞬间就会把原文件截断为 0 字节。此时如果还试图从同一个路径读取，只会得到空文件或报错。文件永久损坏。</p>
+
+<p><strong>正确写法</strong>：</p>
+
+<pre><code># 先全量读入 dict
+with zipfile.ZipFile(docx_path, 'r') as zin:
+    entries = {n: zin.read(n) for n in zin.namelist()}
+zin.close()
+
+# 修改 entries 中的内容
+entries['word/document.xml'] = modified_xml
+
+# 再写入
+with zipfile.ZipFile(docx_path, 'w', zipfile.ZIP_DEFLATED) as zout:
+    for name, data in entries.items():
+        zout.writestr(name, data)</code></pre>
+
+<p>关键原则：<strong>读和写分两步，先全量读入 dict 再写回，绝不开边读边写。</strong></p>
+
+<p>这次文件损坏后，原始备份又因为 WPS Office 的临时文件自动清理机制而丢失了。教训：在操作 docx 之前，一定要做显式的手动备份（<code>cp</code>），不要依赖 WPS 的 <code>.~lock</code> 临时文件。</p>
+
+<h2>三、参数定义的交叉验证</h2>
+
+<p>从 27 条批注映射出约 90 个参数后，必须用项目文档（<code>docs/facts/</code>）逐条验证定义的准确性。验证中发现了两类错误：</p>
+
+<p><strong>1. 缺失下标。</strong> <code>l_{1,g}</code>、<code>l_{2,g}</code>、<code>y_{\nu,g}</code> 等参数只标了线圈族 <code>g</code>，但实际这些距离同时依赖单元编号 <code>q</code>。文档中一致使用 <code>l_{1,g,q}</code>、<code>l_{2,g,q}</code> 等完整双下标。且专利同一段落中 <code>a_q</code> 已经带了 <code>q</code> 下标，<code>l</code> 和 <code>y</code> 不带则前后不一致。</p>
+
+<p><strong>2. 术语错误。</strong> 线圈板面的方向描述使用了"上板/下板"，但项目坐标系采用 front_back 语义（<code>y</code> 轴法向，前板在 <code>+y</code>、后板在 <code>-y</code>）。正确术语应为"前板/后板"。这个问题不仅出现在注入的参数定义中，也出现在专利正文的镜像法段落里。</p>
+
+<p><strong>验证方法</strong>：将每条定义与 <code>docs/facts/</code> 中的权威描述对照，检查符号、公式、物理含义是否一致。参数去重用符号的精确匹配（含下标），不模糊合并。</p>
+
+<h2>四、hy-workflow 工具链的边界</h2>
+
+<h3>4.1 hy_commit 无法指定 PR 目标分支</h3>
+
+<p><code>hy_commit</code> 只接受 <code>title</code> 和 <code>body</code> 两个参数，内部调用 <code>gh pr create</code> 时不传 <code>--base</code>，导致 PR 始终打到 GitHub 仓库的默认分支（<code>main</code>）。当项目存在 <code>dev</code> 作为活跃开发主线、<code>main</code> 作为稳定分支时，hy_commit 无法满足"PR 到 dev"的需求。</p>
+
+<p>绕过方式：手动 <code>gh pr create --base dev</code>，跳过 hy_commit 步骤。已向 hy-workflow-mcp 提 issue 建议增加 <code>base</code> 参数。</p>
+
+<h3>4.2 .hy/workflow.json 导致的分支切换冲突</h3>
+
+<p><code>.hy/workflow.json</code> 是 hy-workflow 在项目根目录生成的临时文件，记录当前工作流阶段。当这个文件被手动删除后，通过 <code>git checkout</code> 切换分支时会因为跟踪状态冲突而失败。原因是 <code>.hy/</code> 目录在某些分支被跟踪、某些分支不被跟踪，导致 checkout 时 git 需要覆盖或保留该文件。</p>
+
+<p>解决：<code>rm -rf .hy/</code> 后立刻 <code>git checkout -b new-branch</code>，趁工作流状态文件还没被重新创建。</p>
+
+<h3>4.3 工作流状态机卡住</h3>
+
+<p>手动操作 git（如 <code>git stash</code>、<code>git checkout</code>、<code>git branch -D</code>）会导致 hy-workflow 的状态机与实际 git 状态脱节。出现类似 "Phase 'init' is not in [approve, branch]" 这样的错误提示。</p>
+
+<p>恢复方式：<code>hy_reset</code> 重置到 plan 阶段，重新走 plan → approve → branch → edit → verify 流水线。如果 <code>hy_reset</code> 也失效，删除 <code>.hy/workflow.json</code> 或 <code>.hy/</code> 目录后再调用 <code>hy_plan</code>。</p>
+
+<h2>五、正文修改也需要修订模式</h2>
+
+<p>专利正文（非批注注入部分）的修改同样不能做静默替换。例如将镜像法段落中的"上板与下板镜像坐标取平均"改为"前板与后板镜像坐标取平均"，需要拆解原来的 <code>&lt;w:r&gt;</code> 文本为三部分：前缀 + <code>&lt;w:del&gt;旧文本&lt;/w:del&gt;</code> + <code>&lt;w:ins&gt;新文本&lt;/w:ins&gt;</code> + 后缀。</p>
+
+<p>这要求在 <code>&lt;w:r&gt;</code> 元素级别操作 XML，将原 run 替换为拆分后的多个 run 元素。用 <code>lxml</code> 的 <code>parent.remove()</code> + <code>parent.insert()</code> 可以做到。</p>
+
+<h2>六、全流程总结</h2>
+
+<table>
+<tr><td>阶段</td><td>关键操作</td><td>产物</td></tr>
+<tr><td>1. 批注映射</td><td>从 comments.xml 提取 27 条批注 → 建 comment_id → 参数定义 map</td><td>Python dict in 注入脚本</td></tr>
+<tr><td>2. 注入 Track Changes</td><td>lxml 操作 document.xml → 段落末尾追加 &lt;w:ins&gt;</td><td>修改后的 docx</td></tr>
+<tr><td>3. 交叉验证</td><td>逐条对比 docs/facts/ 权威描述 → 发现 q 下标 + 术语错误</td><td>错误清单</td></tr>
+<tr><td>4. 修正</td><td>zip 先读后写 → str.replace() 修复参数定义 + lxml 注入 del+ins 修正正文</td><td>修正后的 docx</td></tr>
+<tr><td>5. 交付</td><td>git add + commit + gh pr create --base dev</td><td>PR → merge</td></tr>
+</table>
+
+<h2>七、核心经验</h2>
+
+<ol>
+  <li><strong>操作 docx XML 时，先全量读入 dict 再写回。</strong>边读边写 = 文件截断 = 永久损坏。</li>
+  <li><strong>在 zip 操作前做显式 <code>cp</code> 备份。</strong>不要依赖 WPS 的 <code>.~lock</code> 临时文件，它随时可能被清理。</li>
+  <li><strong>python-docx 不保留 Track Changes。</strong>任何需要修订模式的操作，只能用 lxml 直接操作原始 XML。</li>
+  <li><strong>批注锚定有两种格式。</strong>仅检查 <code>commentRangeStart</code> 会漏掉纯 <code>commentReference</code> 的批注。</li>
+  <li><strong>参数定义必须与项目文档交叉验证。</strong>不能仅依赖脚本输出，必须人工（或自动化）对照 docs 核实符号、下标、物理含义。</li>
+  <li><strong>术语一致性要核对坐标系。</strong>上下/前后/左右不是随意选的，必须与项目采用的坐标语义一致。</li>
+  <li><strong>正文修改也要用修订模式。</strong>不能对专利原文做静默替换，必须拆解 run 元素并包裹 del+ins。</li>
+  <li><strong>hy_commit 无 base 参数。</strong>PR 目标分支不是 dev 时，手动 <code>gh pr create --base dev</code>。</li>
+  <li><strong>hy-workflow 状态机脆弱。</strong>手动 git 操作后需要 <code>hy_reset</code> 恢复，或删除 <code>.hy/</code> 目录重建。</li>
+</ol>
+
+<hr>
+
+<p>最后更新：2026年6月</p>
+
+</body>
+</html>

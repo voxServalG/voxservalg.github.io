@@ -128,7 +128,15 @@ window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
 
 <hr>
 
-<p>这些页面还在不断补充中。每篇笔记都按照一个原则来写：先说明对象是什么，再说明它有什么性质，然后说明这些性质有什么用。</p>
+<p><a id="dont-click" href="#">别点这里</a></p>
+
+<script>
+(function() {
+  var n = Math.floor(Math.random() * 11) + 1;
+  var pad = n < 10 ? '0' + n : '' + n;
+  document.getElementById('dont-click').href = 'http://www.mylittleairport.com/lyrics_' + pad + '.htm';
+})();
+</script>
 
 <p>最后更新：2026年6月</p>
 

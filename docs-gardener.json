@@ -1,6 +1,7 @@
 {
+  "docsDir": "docs",
   "codeDirs": ["."],
   "codeExt": ".js",
   "baseBranch": "main",
-  "maxLines": 100
+  "catalogs": {}
 }
